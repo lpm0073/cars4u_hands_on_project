@@ -35,11 +35,20 @@ As a senior data scientist at Cars4U, you have to come up with a pricing model t
 | New_Price  | The price of a new car of the same model is INR 100,000 (INR = Indian Rupee)  |
 | Price  | The price of the used car is INR 100,000 (Target Variable)  |
 
-## Quick Start
+## Python setup for local development
+
+Note that the Jupyter notebooks that we're using in class have been preconfigured for us. In a real-world project
+however we'd need to setup this environment ourselves. It's generally good practice to create a [Python virtual environment](https://docs.python.org/3/library/venv.html) for each of your Python projects.
 
 1. create a Python virtual environment
 
   ```bash
+  # clone this project to your local computer
+  git clone https://github.com/lpm0073/cars4u_hands_on_project.git
+  cd cars4u_hands_on_project
+
+  # create a Python virtual environment inside of this repository. Note that
+  # you'll need to have already install Python3.x on your computer.
   python3 -m venv venv
   source venv/bin/activate
 
@@ -52,8 +61,10 @@ As a senior data scientist at Cars4U, you have to come up with a pricing model t
   # verify that pip is running from your new virtual environment
   which pip
 
-  # install any PyPi packages that we reference in this repo
-  # see 
+  # install any PyPi packages that we reference in this repo.
+  # The special data science python packages that we are using
+  # have been catalogued for you in a special file named requirements.txt
+  # in the root of this repository. 
   pip install -r requirements.txt
   ```
 
@@ -136,4 +147,5 @@ As a senior data scientist at Cars4U, you have to come up with a pricing model t
 
   From inside of VS Code, set the Python virtual environment. See [Using Python environments in VS Code](https://code.visualstudio.com/docs/python/environments). On a Mac you can use the hotkey "Shift Command P" to open a drop-down list of Python interpreters.
 
-![Python virtual environment](./doc/python-virtual-environment.png "Python Virtual Environment")
+  ![Python virtual environment](./doc/python-virtual-environment.png "Python Virtual Environment")
+  
