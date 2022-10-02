@@ -1,0 +1,5 @@
+numpy           # see https://pypi.org/project/numpy/
+pandas          # see https://pypi.org/project/pandas/
+matplotlib      # see https://pypi.org/project/matplotlib/
+seaborn         # see https://pypi.org/project/seaborn/
+sklearn         # see https://pypi.org/project/sklearn/
