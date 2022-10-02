@@ -12,6 +12,18 @@ import re
 import warnings                                                  # Used to ignore the warning given as output of the code
 warnings.filterwarnings('ignore')
 
+from utils import (
+    encode_cat_vars, 
+    get_model_score,
+    build_ols_model,
+    rmse,
+    mape,
+    mae,
+    model_pref,
+    checking_vif,
+    treating_multicollinearity
+    )
+
 import numpy as np                                               # Basic libraries of python for numeric and dataframe computations
 import pandas as pd
 
@@ -30,10 +42,8 @@ from sklearn import metrics                                      # Metrics to ev
 from sklearn.model_selection import GridSearchCV                 # For tuning the model
 from sklearn.impute import KNNImputer
 
-from sklearn.model_selection import train_test_split
 import statsmodels.api as sm
 import math
-from statsmodels.stats.outliers_influence import variance_inflation_factor
 import statsmodels.stats.api as sms
 from statsmodels.compat import lzip
 import pylab
@@ -500,114 +510,7 @@ def knn_imputation_from_():
 def model():
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-
-    def encode_cat_vars(x):
-        x = pd.get_dummies(
-            x,
-            columns = x.select_dtypes(include = ["object", "category"]).columns.tolist(),
-            drop_first = True,
-        )
-        return x
-
-    def build_ols_model(train):
-        # Create the model
-        olsmodel = sm.OLS(y_train["price_log"], train)
-        return olsmodel.fit()
-
-    # RMSE
-    def rmse(predictions, targets):
-        return np.sqrt(((targets - predictions) ** 2).mean())
-
-
-    # MAPE
-    def mape(predictions, targets):
-        return np.mean(np.abs((targets - predictions)) / targets) * 100
-
-
-    # MAE
-    def mae(predictions, targets):
-        return np.mean(np.abs((targets - predictions)))
-
-    # Model Performance on test and train data
-    def model_pref(model, x_train, x_test):
-
-        # Insample Prediction
-        y_pred_train_pricelog = model.predict(x_train)
-        y_pred_train_Price = y_pred_train_pricelog.apply(math.exp)
-        y_train_Price = y_train["Price"]
-
-        # Prediction on test data
-        y_pred_test_pricelog = model.predict(x_test)
-        y_pred_test_Price = y_pred_test_pricelog.apply(math.exp)
-        y_test_Price = y_test["Price"]
-
-        print(
-            pd.DataFrame(
-                {
-                    "Data": ["Train", "Test"],
-                    "RMSE": [
-                        rmse(y_pred_train_Price, y_train_Price),
-                        rmse(y_pred_test_Price, y_test_Price),
-                    ],
-                    "MAE": [
-                        mae(y_pred_train_Price, y_train_Price),
-                        mae(y_pred_test_Price, y_test_Price),
-                    ],
-                    "MAPE": [
-                        mape(y_pred_train_Price, y_train_Price),
-                        mape(y_pred_test_Price, y_test_Price),
-                    ],
-                }
-            )
-        )
-
-    def checking_vif(train):
-        vif = pd.DataFrame()
-        vif["feature"] = train.columns
-
-        # calculating VIF for each feature
-        vif["VIF"] = [
-            variance_inflation_factor(train.values, i) for i in range(len(train.columns))
-        ]
-        return vif
-
-    def treating_multicollinearity(high_vif_columns, x_train, x_test):
-        """
-        Drop every column that has VIF score greater than 5, one by one.
-        Look at the adjusted R square of all these models
-        Look at the RMSE of all these models on test data
-        """
-        adj_rsq_scores = []
-        rmse_test_data = []
-
-        # Build ols models by dropping one of these at a time and observe the Adjusted R-squared
-        for cols in high_vif_columns:
-            train = x_train.loc[:, ~x_train.columns.str.startswith(cols)]
-            test = x_test.loc[:, ~x_test.columns.str.startswith(cols)]
-            # Create the model
-            olsres = build_ols_model(train)
-            # Adj R-Sq
-            adj_rsq_scores.append(olsres.rsquared_adj)
-            # RMSE (Test data)
-            y_pred_test_pricelog = olsres.predict(test)
-            y_pred_test_Price = y_pred_test_pricelog.apply(math.exp)
-            y_test_Price = y_test["Price"]
-            rmse_test_data.append(rmse(y_pred_test_Price, y_test_Price))
-
-        # Add new Adj_Rsq and RMSE after dropping each colmn
-        temp = pd.DataFrame(
-            {
-                "col": high_vif_columns,
-                "Adj_rsq_after_dropping_col": adj_rsq_scores,
-                "Test RMSE": rmse_test_data,
-            }
-        ).sort_values(by = "Adj_rsq_after_dropping_col", ascending = False)
-
-        print(temp)
-        print("\n\n")
-
-
-    ind_vars_num = encode_cat_vars(ind_vars)        # internal def
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
     ind_vars_num.head()
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -628,7 +531,7 @@ def model():
     # Add constant to test data
     x_test = sm.add_constant(x_test)
 
-    olsmodel1 = build_ols_model(x_train)    # internal def
+    olsmodel1 = build_ols_model(sm, y_train, train=x_train)    # internal def
     print(olsmodel1.summary())
 
     # Notes:
@@ -660,7 +563,7 @@ def model():
     # - We will use VIF, to check if there is multicollinearity in the data.
     # - Features having a VIF score >5 will be dropped/treated till all the features have a VIF score <5.
 
-    print(checking_vif(x_train))    # internal def
+    print(checking_vif(pd, x_train))    # internal def
     # observations:
     # ---------------
     # - There are a few variables with high VIF.
@@ -686,7 +589,7 @@ def model():
     dep_var = df1[["price_log", "Price"]]
 
     # Dummy encoding
-    ind_vars_num = encode_cat_vars(ind_vars)
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
 
     # Splitting data into train and test
     X_train, X_test, y_train, y_test = train_test_split(
@@ -702,7 +605,7 @@ def model():
     x_test = sm.add_constant(X_test)
 
     # Fit linear model on new dataset
-    olsmodel2 = build_ols_model(x_train)
+    olsmodel2 = build_ols_model(sm, y_train, train=x_train)
     print(olsmodel2.summary())
 
     # The R squared and adjusted r squared values have decreased, but are still 
@@ -711,7 +614,7 @@ def model():
     # of predictor features.
     #
     # As we try to decrease overfitting, the r squared of our train model is expected to decrease.
-    print(checking_vif(x_train))
+    print(checking_vif(pd, x_train))
 
     # Checking model performance
     model_pref(olsmodel2, x_train, x_test)  # No Overfitting.
@@ -739,7 +642,7 @@ def model():
         "Fuel_Type",
         "car_category",
     ]
-    treating_multicollinearity(high_vif_columns, x_train, x_test)
+    treating_multicollinearity(pd, high_vif_columns, x_train, x_test, y_test)
 
     # Dropping cars_category would have the maximum impact on predictive power of the model (amongst the variables being considered)
     # We'll drop engine_num and check the vif again
@@ -750,7 +653,7 @@ def model():
     x_test = x_test.loc[:, ~x_test.columns.str.startswith(col_to_drop)]
 
     # Check VIF now
-    vif = checking_vif(x_train)
+    vif = checking_vif(pd, x_train)
     print("VIF after dropping ", col_to_drop)
     print(vif)
 
@@ -765,7 +668,7 @@ def model():
         "Fuel_Type",
         "car_category",
     ]
-    treating_multicollinearity(high_vif_columns, x_train, x_test)
+    treating_multicollinearity(pd, high_vif_columns, x_train, x_test, y_test)
 
     # Drop 'new_price_num' from train and test
     col_to_drop = "new_price_num"
@@ -773,7 +676,7 @@ def model():
     x_test = x_test.loc[:, ~x_test.columns.str.startswith(col_to_drop)]
 
     # Check VIF now
-    vif = checking_vif(x_train)
+    vif = checking_vif(pd, x_train)
     print("VIF after dropping ", col_to_drop)
     print(vif)
 
@@ -786,7 +689,7 @@ def model():
 
     # Let's look at the model with the data that does not have multicollinearity
     # Fit linear model on new dataset
-    olsmodel3 = build_ols_model(x_train)
+    olsmodel3 = build_ols_model(sm, y_train, train=x_train)
     print(olsmodel3.summary())
 
     print("\n\n")
@@ -898,62 +801,23 @@ def model():
     """
 
 def analyzing_off_the_mark_predictions():
+    ind_vars = df.drop(["Price", "price_log"], axis = 1)
+    dep_var = df[["price_log", "Price"]]
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num.head()
 
-    def encode_cat_vars(x):
-        x = pd.get_dummies(
-            x,
-            columns = x.select_dtypes(include = ["object", "category"]).columns.tolist(),
-            drop_first = True,
-        )
-        return x
+    x_train, x_test, y_train, y_test = train_test_split(
+        ind_vars_num, dep_var, test_size = 0.3, random_state = 1
+    )
 
     ##  Function to calculate r2_score and RMSE on train and test data
-    def get_model_score(model, flag = True):
-        """
-        model : regressor to predict values of X
-
-        """
-        # Defining an empty list to store train and test results
-        score_list = []
-
-        pred_train = model.predict(X_train)
-        pred_train_ = np.exp(pred_train)
-        pred_test = model.predict(X_test)
-        pred_test_ = np.exp(pred_test)
-
-        train_r2 = metrics.r2_score(y_train["Price"], pred_train_)
-        test_r2 = metrics.r2_score(y_test["Price"], pred_test_)
-        train_rmse = metrics.mean_squared_error(
-            y_train["Price"], pred_train_, squared = False
-        )
-        test_rmse = metrics.mean_squared_error(y_test["Price"], pred_test_, squared = False)
-
-        # Adding all scores in the list
-        score_list.extend((train_r2, test_r2, train_rmse, test_rmse))
-
-        # If the flag is set to True then only the following print statements will be dispayed, the default value is True
-        if flag == True:
-            print(
-                "R-sqaure on training set : ",
-                metrics.r2_score(y_train["Price"], pred_train_),
-            )
-            print("R-square on test set : ", metrics.r2_score(y_test["Price"], pred_test_))
-            print(
-                "RMSE on training set : ",
-                np.sqrt(metrics.mean_squared_error(y_train["Price"], pred_train_)),
-            )
-            print(
-                "RMSE on test set : ",
-                np.sqrt(metrics.mean_squared_error(y_test["Price"], pred_test_)),
-            )
-
-        # Returning the list with train and test scores
-        return score_list
 
     # Extracting the rows from original data frame df where indexes are same as the training data
     original_df = df[df.index.isin(x_train.index.values)].copy()
 
     # Extracting predicted values from the final model
+    olsmodel3 = build_ols_model(sm, y_train, train=x_train)
+
     residuals = olsmodel3.resid
     fitted_values = olsmodel3.fittedvalues
 
@@ -1002,10 +866,11 @@ def analyzing_off_the_mark_predictions():
     # of diesel cars is higher compared to petrol cars. This is probably 
     # the cause of these outliers.
 
+def ridge_regression_model():
     # Splitting data into train and test
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(ind_vars)        # internal def
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
 
     X_train, X_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
@@ -1018,15 +883,260 @@ def analyzing_off_the_mark_predictions():
     rdg.fit(X_train, y_train["price_log"])
 
     # Get score of the model.
-    Ridge_score = get_model_score(rdg)
+    Ridge_score = get_model_score(X_train, X_test, y_train, y_test, np, metrics, model=rdg)
 
     # Observations
     # ----------------
     # Ridge regression is able to produce better results compared to Linear Regression.
+    return rdg
 
 def decision_tree():
-    
+    # see https://scikit-learn.org/stable/auto_examples/tree/plot_tree_regression.html
 
+    ind_vars = df.drop(["Price", "price_log"], axis = 1)
+    dep_var = df[["price_log", "Price"]]
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        ind_vars_num, dep_var, test_size = 0.3, random_state = 1
+    )
+
+    # Create a decision tree regression model
+    dtree = DecisionTreeRegressor(random_state = 1)
+
+    # Fit decision tree regression model.
+    dtree.fit(X_train, y_train["price_log"])
+
+    # Get score of the model.
+    Dtree_model = get_model_score(X_train, X_test, y_train, y_test, np, metrics, model=dtree)
+    # Observations
+    # ---------------
+    # Decision Tree is overfitting on the training set and hence not able to generalize well on the test set.
+
+    # Feature Importance
+    # Print the importance of features in the tree building ( The importance of
+    # a feature is computed as the (normalized) total reduction of the criterion 
+    # brought by that feature. It is also known as the Gini importance )
+    print(
+        pd.DataFrame(
+            dtree.feature_importances_, columns = ["Imp"], index = X_train.columns
+        ).sort_values(by = "Imp", ascending = False)
+    )
+
+    # Observations
+    # --------------
+    # Power, Year and km_per_unit_fuel are the top 3 important features of decision tree model.
+    return dtree
+
+def random_forest():
+    # see https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
+
+    ind_vars = df.drop(["Price", "price_log"], axis = 1)
+    dep_var = df[["price_log", "Price"]]
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        ind_vars_num, dep_var, test_size = 0.3, random_state = 1
+    )
+
+    # Create a Random Forest regression model 
+    rf = RandomForestRegressor(random_state = 1, oob_score = True)
+
+    # Fit Random Forest regression model.
+    rf.fit(X_train, y_train["price_log"])
+
+    # Get score of the model.
+    RandomForest_model = get_model_score(rf)
+
+    # Observations:
+    # --------------
+    # Random Forest model has performed well on training and test set and we can see the model has overfitted slightly.
+
+    # Feature Importance
+    # Print the importance of features in the tree building ( The importance 
+    # of a feature is computed as the (normalized) total reduction of the 
+    # criterion brought by that feature. It is also known as the Gini importance )
+    print(
+        pd.DataFrame(
+            rf.feature_importances_, columns = ["Imp"], index = X_train.columns
+        ).sort_values(by = "Imp", ascending = False)
+    )
+
+    # Observations
+    # --------------
+    # Power, Year and km_per_unit_fuel are some of the important features of random forest model.
+    return rf
+
+def hyperparameter_tuning_decision_tree():
+
+    ind_vars = df.drop(["Price", "price_log"], axis = 1)
+    dep_var = df[["price_log", "Price"]]
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        ind_vars_num, dep_var, test_size = 0.3, random_state = 1
+    )
+
+    # Choose the type of regressor.
+    dtree_tuned = DecisionTreeRegressor(random_state = 1)
+
+    # Grid of parameters to choose from
+    parameters = {
+        "max_depth": list(np.arange(2, 25, 5)) + [None],
+        "min_samples_leaf": [1, 3, 5, 7],
+        "max_leaf_nodes": [2, 5, 7] + [None],
+    }
+
+    # Type of scoring used to compare parameter combinations
+    scorer = metrics.make_scorer(metrics.r2_score)
+
+    # Run the grid search
+    grid_obj = GridSearchCV(dtree_tuned, parameters, scoring = scorer, cv = 5)
+    grid_obj = grid_obj.fit(X_train, y_train["price_log"])
+
+    # Set the clf to the best combination of parameters
+    dtree_tuned = grid_obj.best_estimator_
+
+    # Fit the best algorithm to the data.
+    dtree_tuned.fit(X_train, y_train["price_log"])
+
+    # Get score of the dtree_tuned
+    dtree_tuned_score = get_model_score(dtree_tuned)
+
+    # Observations:
+    # --------------
+    # Overfitting in decision tree is still there.
+    pd.DataFrame(dtree_tuned.feature_importances_, columns = ["Imp"], index = X_train.columns).sort_values(by = "Imp", ascending = False).plot(kind = 'bar')
+
+    # Observations:
+    # --------------
+    # Power, Year and new_price_num are the top 3 important features of decision tree model.
+
+    return dtree_tuned
+
+def hyperparameter_tuning_random_forest():
+    ind_vars = df.drop(["Price", "price_log"], axis = 1)
+    dep_var = df[["price_log", "Price"]]
+    ind_vars_num = encode_cat_vars(pd, ind_vars)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        ind_vars_num, dep_var, test_size = 0.3, random_state = 1
+    )
+
+    # Choose the type of regressor
+    rf_tuned = RandomForestRegressor(random_state = 1)
+
+    # Grid of parameters to choose from
+    parameters = {
+        "max_depth": [5, 6],
+        "max_features": ["sqrt", "log2"],
+        "n_estimators": [300, 500, 900, 1000],
+    }
+
+    # Type of scoring used to compare parameter combinations
+    scorer = metrics.make_scorer(metrics.r2_score)
+
+    # Run the grid search
+    grid_obj = GridSearchCV(rf_tuned, parameters, scoring = scorer, cv = 5)
+    grid_obj = grid_obj.fit(X_train, y_train["price_log"])
+
+    # Set the clf to the best combination of parameters
+    rf_tuned = grid_obj.best_estimator_
+
+    # Fit the best algorithm to the data.
+    rf_tuned.fit(X_train, y_train["price_log"])
+
+    # Get score of the model.
+    rf_tuned_score = get_model_score(rf_tuned)
+
+    # Observations:
+    # --------------
+    # There's still scope for improvement with tuning the hyperparameters of the Random Forest.
+
+    # Feature Importance
+    pd.DataFrame(rf_tuned.feature_importances_, columns = ["Imp"], index = X_train.columns).sort_values(by = 'Imp', ascending = False).plot(kind = 'bar')
+
+    # Observations:
+    # ---------------
+    # new_price_num, power_num, engine_num, and Year are the top 4 important 
+    # variables in predicting car price according to Random Forest.
+
+    return rf_tuned
+
+def model_comparison():
+    # Defining list of models
+    rdg = ridge_regression_model()
+    dtree = decision_tree()
+    dtree_tuned = hyperparameter_tuning_decision_tree()
+    rf = random_forest()
+    rf_tuned = hyperparameter_tuning_random_forest()
+    models = [rdg, dtree, dtree_tuned, rf, rf_tuned]
+
+    # Defining empty lists to add train and test results
+    r2_train = []
+    r2_test = []
+    rmse_train = []
+    rmse_test = []
+
+    # Looping through all the models to get the rmse and r2 scores
+    for model in models:
+        # accuracy score
+        j = get_model_score(model, False)
+        r2_train.append(j[0])
+        r2_test.append(j[1])
+        rmse_train.append(j[2])
+        rmse_test.append(j[3])
+
+    comparison_frame = pd.DataFrame(
+        {
+            "Model": [
+                "Ridge Regression",
+                "Decision Tree",
+                "Tuned Decision Tree",
+                "Random Forest",
+                "Tuned Random Forest",
+            ],
+            "Train_r2": r2_train,
+            "Test_r2": r2_test,
+            "Train_RMSE": rmse_train,
+            "Test_RMSE": rmse_test,
+        }
+    )
+    comparison_frame
+
+    # observations:
+    # ---------------
+    # Ridge Regression and Linear Regression have performed very well on data. 
+    # However, tuned Decision tree has performed better on training and test set. 
+    # There is slight overfitting, if we can tune it better we can remove it.
+
+"""
+Refined insights:
+Name: 
+- The Name column has 2041 unique values and this column would not be very useful in our analysis. But the name contains both the brand name and the model name of the vehicle and we can process this column to extract Brand and Model names to reduce the number of levels.
+
+Extracting the car brands: 
+- After extracting the car brands from the name column we find that the most frequent brand in our data is Maruti and Hyundai.
+
+Extracting car model name:
+- After extracting the car name it gets clear that our dataset contains used cars from luxury as well as budget-friendly brands.
+- The mean price of a used Lamborghini is 120 Lakhs and that of cars from other luxury brands follow in descending order and this output is very close to our expectation (domain knowledge), in terms of brand order. Towards the bottom end, we have more budget-friendly brands.
+
+Important variable with Random Forest:
+- According to the Random Forest model the most significant predictors of the price of used cars are
+    Power of the engine
+    The year of manufacturing
+    Engine
+    New_Price
+
+Business Insights and Recommendations
+- Some southern markets tend to have higher prices. It might be a good strategy to plan growth in southern cities using this information. Markets like Kolkata (coeff = -0.2) are very risky and we need to be careful about investments in this area.
+- We will have to analyze the cost side of things before we can talk about profitability in the business. We should gather data regarding that.
+- The next step would be to cluster different sets of data and see if we should make multiple models for different locations/car types.
+
+Proposal for the final solution design:
+- Our final tuned Decision model has an R-squared of ~0.89 on the test data, which means that our model can explain 89% variation in our data also the RMSE on test data is ~3.75 which means we can predict very closely to the original values. This is a very good model and we can use this model in production.
+"""
 
 # Python execution main program entry point
 def main():
