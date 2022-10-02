@@ -18,7 +18,7 @@ As a senior data scientist at Cars4U, you have to come up with a pricing model t
 
 ## Data Dictionary
 
-|   |   |
+| Data Field  | Definition  |
 |---|---|
 | S.No.   | Serial Number  |
 | Name  | Name of the car which includes Brand name and Model name  |
