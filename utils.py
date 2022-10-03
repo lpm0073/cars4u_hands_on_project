@@ -1,7 +1,25 @@
-import math
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+#------------------------------------------------------------------------------
+# written by:   Lawrence McDaniel
+#               https://lawrencemcdaniel.com
+#
+# date:         oct-2022
+#
+# usage:        transcription of Cars4U hands-on session 2-Oct-2022
+#               reusable functions.
+#------------------------------------------------------------------------------
 
-def encode_cat_vars(pd, x):
+# Python imports
+import math
+
+# from MIT IDSS Data Science & Machine Learning Jupyter Notebook
+import numpy as np                                               # Basic libraries of python for numeric and dataframe computations
+import pandas as pd
+from sklearn import metrics                                      # Metrics to evaluate the model
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import statsmodels.api as sm
+
+
+def encode_cat_vars(x):
     x = pd.get_dummies(
         x,
         columns = x.select_dtypes(include = ["object", "category"]).columns.tolist(),
@@ -9,7 +27,7 @@ def encode_cat_vars(pd, x):
     )
     return x
 
-def get_model_score(X_train, X_test, y_train, y_test, np, metrics, model, flag = True):
+def get_model_score(x_train, x_test, y_train, y_test, model, flag = True):
     """
     model : regressor to predict values of X
 
@@ -17,9 +35,9 @@ def get_model_score(X_train, X_test, y_train, y_test, np, metrics, model, flag =
     # Defining an empty list to store train and test results
     score_list = []
 
-    pred_train = model.predict(X_train)
+    pred_train = model.predict(x_train)
     pred_train_ = np.exp(pred_train)
-    pred_test = model.predict(X_test)
+    pred_test = model.predict(x_test)
     pred_test_ = np.exp(pred_test)
 
     train_r2 = metrics.r2_score(y_train["Price"], pred_train_)
@@ -53,13 +71,13 @@ def get_model_score(X_train, X_test, y_train, y_test, np, metrics, model, flag =
 
 
 
-def build_ols_model(sm, y_train, train):
+def build_ols_model(y_train, train):
     # Create the model
     olsmodel = sm.OLS(y_train["price_log"], train)
     return olsmodel.fit()
 
 # RMSE
-def rmse(np, predictions, targets):
+def rmse(predictions, targets):
     return np.sqrt(((targets - predictions) ** 2).mean())
 
 
@@ -73,7 +91,7 @@ def mae(predictions, targets):
     return np.mean(np.abs((targets - predictions)))
 
 # Model Performance on test and train data
-def model_pref(model, x_train, x_test):
+def model_pref(model, x_train, x_test, y_train, y_test):
 
     # Insample Prediction
     y_pred_train_pricelog = model.predict(x_train)
@@ -105,7 +123,7 @@ def model_pref(model, x_train, x_test):
         )
     )
 
-def checking_vif(pd, train):
+def checking_vif(train):
     vif = pd.DataFrame()
     vif["feature"] = train.columns
 
@@ -115,7 +133,7 @@ def checking_vif(pd, train):
     ]
     return vif
 
-def treating_multicollinearity(pd, high_vif_columns, x_train, x_test, y_test):
+def treating_multicollinearity(high_vif_columns, x_train, x_test, y_test):
     """
     Drop every column that has VIF score greater than 5, one by one.
     Look at the adjusted R square of all these models

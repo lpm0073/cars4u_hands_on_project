@@ -10,7 +10,6 @@
 
 # native Python libraries
 import sys
-import re
 import math
 import warnings                                                  # Used to ignore the warning given as output of the code
 warnings.filterwarnings('ignore')
@@ -51,14 +50,13 @@ from sklearn.tree import DecisionTreeRegressor                   # Import method
 from sklearn.ensemble import RandomForestRegressor               # Import methods to build Random Forest.
 from sklearn import metrics                                      # Metrics to evaluate the model
 from sklearn.model_selection import GridSearchCV                 # For tuning the model
-from sklearn.impute import KNNImputer
 
 # these imports were coded in-line 
 import statsmodels.api as sm
 import statsmodels.stats.api as sms
 from statsmodels.compat import lzip
 
-# module-level declarations
+# open and clean the data file
 df = pd.read_csv("used_cars_data.csv")
 process_column_mileage()
 process_column_engine()
@@ -100,7 +98,7 @@ Model Building
 def model():
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
     ind_vars_num.head()
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -121,7 +119,7 @@ def model():
     # Add constant to test data
     x_test = sm.add_constant(x_test)
 
-    olsmodel1 = build_ols_model(sm, y_train, train=x_train)    # internal def
+    olsmodel1 = build_ols_model(y_train, train=x_train)    # internal def
     print(olsmodel1.summary())
 
     # Notes:
@@ -135,7 +133,7 @@ def model():
     # - Before we move on to assumption testing, we'll do a quick performance check on the test data.
 
     # Checking model performance
-    model_pref(olsmodel1, x_train, x_test)  # High Overfitting.
+    model_pref(olsmodel1, x_train, x_test, y_train, y_test) # High Overfitting.
 
     # - Root Mean Squared Error of train and test data is starkly different, indicating that our model is overfitting the train data.
     # - Mean Absolute Error indicates that our current model can predict used car prices within a mean error of 1.9 lakhs on test data.
@@ -153,7 +151,7 @@ def model():
     # - We will use VIF, to check if there is multicollinearity in the data.
     # - Features having a VIF score >5 will be dropped/treated till all the features have a VIF score <5.
 
-    print(checking_vif(pd, x_train))    # internal def
+    print(checking_vif(x_train))    # internal def
     # observations:
     # ---------------
     # - There are a few variables with high VIF.
@@ -179,10 +177,10 @@ def model():
     dep_var = df1[["price_log", "Price"]]
 
     # Dummy encoding
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
     # Splitting data into train and test
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -190,12 +188,12 @@ def model():
     print("Number of rows in test data =", x_test.shape[0], "\n\n")
 
     # Statsmodel api does not add a constant by default. We need to add it explicitly.
-    x_train = sm.add_constant(X_train)
+    x_train = sm.add_constant(x_train)
     # Add constant to test data
-    x_test = sm.add_constant(X_test)
+    x_test = sm.add_constant(x_test)
 
     # Fit linear model on new dataset
-    olsmodel2 = build_ols_model(sm, y_train, train=x_train)
+    olsmodel2 = build_ols_model(y_train, train=x_train)
     print(olsmodel2.summary())
 
     # The R squared and adjusted r squared values have decreased, but are still 
@@ -204,10 +202,10 @@ def model():
     # of predictor features.
     #
     # As we try to decrease overfitting, the r squared of our train model is expected to decrease.
-    print(checking_vif(pd, x_train))
+    print(checking_vif(x_train))
 
     # Checking model performance
-    model_pref(olsmodel2, x_train, x_test)  # No Overfitting.
+    model_pref(olsmodel2, x_train, x_test, y_train, y_test)  # No Overfitting.
     # - The RMSE on train data has increased now but has decreased on test data.
     # - The RMSE values on both datasets being close to each other indicate that the model is not overfitting the training data anymore.
     # - Reducing overfitting has caused the MAE to increase on training data but the test MAE has in fact reduced.
@@ -232,7 +230,7 @@ def model():
         "Fuel_Type",
         "car_category",
     ]
-    treating_multicollinearity(pd, high_vif_columns, x_train, x_test, y_test)
+    treating_multicollinearity(high_vif_columns, x_train, x_test, y_test)
 
     # Dropping cars_category would have the maximum impact on predictive power of the model (amongst the variables being considered)
     # We'll drop engine_num and check the vif again
@@ -243,7 +241,7 @@ def model():
     x_test = x_test.loc[:, ~x_test.columns.str.startswith(col_to_drop)]
 
     # Check VIF now
-    vif = checking_vif(pd, x_train)
+    vif = checking_vif(x_train)
     print("VIF after dropping ", col_to_drop)
     print(vif)
 
@@ -258,7 +256,7 @@ def model():
         "Fuel_Type",
         "car_category",
     ]
-    treating_multicollinearity(pd, high_vif_columns, x_train, x_test, y_test)
+    treating_multicollinearity(high_vif_columns, x_train, x_test, y_test)
 
     # Drop 'new_price_num' from train and test
     col_to_drop = "new_price_num"
@@ -266,7 +264,7 @@ def model():
     x_test = x_test.loc[:, ~x_test.columns.str.startswith(col_to_drop)]
 
     # Check VIF now
-    vif = checking_vif(pd, x_train)
+    vif = checking_vif(x_train)
     print("VIF after dropping ", col_to_drop)
     print(vif)
 
@@ -279,13 +277,13 @@ def model():
 
     # Let's look at the model with the data that does not have multicollinearity
     # Fit linear model on new dataset
-    olsmodel3 = build_ols_model(sm, y_train, train=x_train)
+    olsmodel3 = build_ols_model(y_train, train=x_train)
     print(olsmodel3.summary())
 
     print("\n\n")
 
     # Checking model performance
-    model_pref(olsmodel3, x_train, x_test)
+    model_pref(olsmodel3, x_train, x_test, y_train, y_test)
 
     # Checking Assumption 2: Mean of residuals should be 0
     residuals = olsmodel3.resid
@@ -393,7 +391,7 @@ def model():
 def analyzing_off_the_mark_predictions():
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
     ind_vars_num.head()
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -406,7 +404,7 @@ def analyzing_off_the_mark_predictions():
     original_df = df[df.index.isin(x_train.index.values)].copy()
 
     # Extracting predicted values from the final model
-    olsmodel3 = build_ols_model(sm, y_train, train=x_train)
+    olsmodel3 = build_ols_model(y_train, train=x_train)
 
     residuals = olsmodel3.resid
     fitted_values = olsmodel3.fittedvalues
@@ -460,9 +458,9 @@ def ridge_regression_model():
     # Splitting data into train and test
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -470,10 +468,10 @@ def ridge_regression_model():
     rdg = Ridge()
 
     # Fit Ridge regression model.
-    rdg.fit(X_train, y_train["price_log"])
+    rdg.fit(x_train, y_train["price_log"])
 
     # Get score of the model.
-    Ridge_score = get_model_score(X_train, X_test, y_train, y_test, np, metrics, model=rdg)
+    Ridge_score = get_model_score(x_train, x_test, y_train, y_test, model=rdg)
 
     # Observations
     # ----------------
@@ -485,9 +483,9 @@ def decision_tree():
 
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -495,10 +493,10 @@ def decision_tree():
     dtree = DecisionTreeRegressor(random_state = 1)
 
     # Fit decision tree regression model.
-    dtree.fit(X_train, y_train["price_log"])
+    dtree.fit(x_train, y_train["price_log"])
 
     # Get score of the model.
-    Dtree_model = get_model_score(X_train, X_test, y_train, y_test, np, metrics, model=dtree)
+    Dtree_model = get_model_score(x_train, x_test, y_train, y_test, model=dtree)
     # Observations
     # ---------------
     # Decision Tree is overfitting on the training set and hence not able to generalize well on the test set.
@@ -509,7 +507,7 @@ def decision_tree():
     # brought by that feature. It is also known as the Gini importance )
     print(
         pd.DataFrame(
-            dtree.feature_importances_, columns = ["Imp"], index = X_train.columns
+            dtree.feature_importances_, columns = ["Imp"], index = x_train.columns
         ).sort_values(by = "Imp", ascending = False)
     )
 
@@ -523,9 +521,9 @@ def random_forest():
 
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -533,10 +531,10 @@ def random_forest():
     rf = RandomForestRegressor(random_state = 1, oob_score = True)
 
     # Fit Random Forest regression model.
-    rf.fit(X_train, y_train["price_log"])
+    rf.fit(x_train, y_train["price_log"])
 
     # Get score of the model.
-    RandomForest_model = get_model_score(rf)
+    RandomForest_model = get_model_score(x_train, x_test, y_train, y_test, model=rf)
 
     # Observations:
     # --------------
@@ -548,7 +546,7 @@ def random_forest():
     # criterion brought by that feature. It is also known as the Gini importance )
     print(
         pd.DataFrame(
-            rf.feature_importances_, columns = ["Imp"], index = X_train.columns
+            rf.feature_importances_, columns = ["Imp"], index = x_train.columns
         ).sort_values(by = "Imp", ascending = False)
     )
 
@@ -561,9 +559,9 @@ def hyperparameter_tuning_decision_tree():
 
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -582,21 +580,21 @@ def hyperparameter_tuning_decision_tree():
 
     # Run the grid search
     grid_obj = GridSearchCV(dtree_tuned, parameters, scoring = scorer, cv = 5)
-    grid_obj = grid_obj.fit(X_train, y_train["price_log"])
+    grid_obj = grid_obj.fit(x_train, y_train["price_log"])
 
     # Set the clf to the best combination of parameters
     dtree_tuned = grid_obj.best_estimator_
 
     # Fit the best algorithm to the data.
-    dtree_tuned.fit(X_train, y_train["price_log"])
+    dtree_tuned.fit(x_train, y_train["price_log"])
 
     # Get score of the dtree_tuned
-    dtree_tuned_score = get_model_score(dtree_tuned)
+    dtree_tuned_score = get_model_score(x_train, x_test, y_train, y_test, model=dtree_tuned)
 
     # Observations:
     # --------------
     # Overfitting in decision tree is still there.
-    pd.DataFrame(dtree_tuned.feature_importances_, columns = ["Imp"], index = X_train.columns).sort_values(by = "Imp", ascending = False).plot(kind = 'bar')
+    pd.DataFrame(dtree_tuned.feature_importances_, columns = ["Imp"], index = x_train.columns).sort_values(by = "Imp", ascending = False).plot(kind = 'bar')
 
     # Observations:
     # --------------
@@ -607,9 +605,9 @@ def hyperparameter_tuning_decision_tree():
 def hyperparameter_tuning_random_forest():
     ind_vars = df.drop(["Price", "price_log"], axis = 1)
     dep_var = df[["price_log", "Price"]]
-    ind_vars_num = encode_cat_vars(pd, ind_vars)
+    ind_vars_num = encode_cat_vars(ind_vars)
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         ind_vars_num, dep_var, test_size = 0.3, random_state = 1
     )
 
@@ -628,23 +626,23 @@ def hyperparameter_tuning_random_forest():
 
     # Run the grid search
     grid_obj = GridSearchCV(rf_tuned, parameters, scoring = scorer, cv = 5)
-    grid_obj = grid_obj.fit(X_train, y_train["price_log"])
+    grid_obj = grid_obj.fit(x_train, y_train["price_log"])
 
     # Set the clf to the best combination of parameters
     rf_tuned = grid_obj.best_estimator_
 
     # Fit the best algorithm to the data.
-    rf_tuned.fit(X_train, y_train["price_log"])
+    rf_tuned.fit(x_train, y_train["price_log"])
 
     # Get score of the model.
-    rf_tuned_score = get_model_score(rf_tuned)
+    rf_tuned_score = get_model_score(x_train, x_test, y_train, y_test, model=rf_tuned)
 
     # Observations:
     # --------------
     # There's still scope for improvement with tuning the hyperparameters of the Random Forest.
 
     # Feature Importance
-    pd.DataFrame(rf_tuned.feature_importances_, columns = ["Imp"], index = X_train.columns).sort_values(by = 'Imp', ascending = False).plot(kind = 'bar')
+    pd.DataFrame(rf_tuned.feature_importances_, columns = ["Imp"], index = x_train.columns).sort_values(by = 'Imp', ascending = False).plot(kind = 'bar')
 
     # Observations:
     # ---------------
@@ -671,7 +669,7 @@ def model_comparison():
     # Looping through all the models to get the rmse and r2 scores
     for model in models:
         # accuracy score
-        j = get_model_score(model, False)
+        j = get_model_score(x_train=None, x_test=None, y_train=None, y_test=None, model=model, flag = False)
         r2_train.append(j[0])
         r2_test.append(j[1])
         rmse_train.append(j[2])
