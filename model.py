@@ -61,15 +61,15 @@ warnings.filterwarnings('ignore')
 
 # open and clean the data file
 df = pd.read_csv("used_cars_data.csv")
-process_column_mileage()
-process_column_engine()
-process_column_power()
-process_column_new_price()
-missing_value_treatment()
-feature_engineering_name()
-plot_distribution_km_driven()
-plot_distribution_price()
-drop_redundant_columns()
+df = process_column_mileage(df)
+df = process_column_engine(df)
+df = process_column_power(df)
+df = process_column_new_price(df)
+df = missing_value_treatment(df)
+df = feature_engineering_name(df)
+df = plot_distribution_km_driven(df)
+df = plot_distribution_price(df)
+df = drop_redundant_columns(df)
 
 """
 Potential techniques: Since it is a regression problem we will first start with the parametric model - linear regression and Ridge Regression.

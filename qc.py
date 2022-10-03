@@ -26,7 +26,7 @@ df = pd.read_csv("used_cars_data.csv")
 """
 Project Part I: explore the data. Identify and remedy QC and completeness problems with the data file.
 """
-def explore_the_data():
+def explore_the_data(df):
     # 1. Exploring the Data
     # Loading the data
     # Loading the data into Python to explore and understand it
@@ -67,7 +67,7 @@ def explore_the_data():
     # - New Price column also needs some processing. This one also contains 
     #   strings and a lot of missing values.
 
-def process_column_mileage():
+def process_column_mileage(df):
     # - We have car mileage in two units, kmpl and km/kg.
     # - After quick research on the internet it is clear that these 2 units are used for cars of 2 different fuel types.
     # - kmpl - kilometers per litre - is used for petrol and diesel cars. -km/kg - kilometers per kg - is used for CNG and LPG-based engines.
@@ -112,10 +112,11 @@ def process_column_mileage():
 
     # Checking the new dataframe
     df.head(5)  # looks good!
+    return df
 
 
 
-def process_column_engine():
+def process_column_engine(df):
     # The data dictionary suggests that Engine indicates the displacement 
     # volume of the engine in CC. We will make sure that all the observations 
     # follow the same format - [numeric + " " + "CC"] and create a new 
@@ -154,8 +155,9 @@ def process_column_engine():
 
     # Checking the new dataframe
     df.head(5)
+    return df
 
-def process_column_power():
+def process_column_power(df):
     # The data dictionary suggests that Power indicates the maximum power of the 
     # engine in bhp. We will make sure that all the observations follow the 
     # same format - [numeric + " " + "bhp"] and create a new numeric column 
@@ -182,8 +184,9 @@ def process_column_power():
 
     # Checking the new dataframe
     df.head(10)  # Looks good now
+    return df
 
-def process_column_new_price():
+def process_column_new_price(df):
     # We know that New_Price is the price of a new car of the same model in 
     # INR Lakhs (1 Lakh = 100, 000).
     #
@@ -211,8 +214,9 @@ def process_column_new_price():
 
     # Checking the new dataframe
     df.head(5)  # Looks ok
+    return df
 
-def feature_engineering_name():
+def feature_engineering_name(df):
     # Extract Brand Names
     df["Brand"] = df["Name"].apply(lambda x: x.split(" ")[0].lower())
     df["Brand"].value_counts()
@@ -224,6 +228,7 @@ def feature_engineering_name():
     df["Model"].value_counts()
     plt.figure(figsize = (15, 7))
     sns.countplot(y = "Model", data = df, order = df["Model"].value_counts().index[0:30])
+    return df
 
 def feature_engineering_category():
     # It is clear from the above charts that our dataset contains used cars 
@@ -314,12 +319,13 @@ def exception_electric_cars():
     # - Price is also missing for 1234 entries. Since price is the response variable that we want to predict, we will have to drop these rows when we build a model. These rows will not be able to help us in modeling or model evaluation. But while we are analyzing the distributions and doing missing value imputations, we will keep using information from these rows.
     # - New Price for 6247 entries is missing. We need to explore if we can impute these or if we should drop this column altogether.
 
-def drop_redundant_columns():
+def drop_redundant_columns(df):
     df.drop(
         columns=["Mileage", "mileage_unit", "Engine", "Power", "New_Price"], inplace = True
     )
+    return df
 
-def plot_distribution_price():
+def plot_distribution_price(df):
     sns.distplot(df["Price"])
     # observation: This is a highly skewed distribution. 
     # Let us use log transformation on this column to see if that helps normalize the distribution.
@@ -333,13 +339,15 @@ def plot_distribution_price():
     plt.figure(figsize = (15, 7))
     sns.boxplot(x = "Location", y = "Price", data = df)
     # observation: Price of used cars has a large IQR in Coimbatore and Bangalore
+    return df
 
-def plot_distribution_km_driven():
+def plot_distribution_km_driven(df):
     sns.distplot(df["Kilometers_Driven"])
 
     # Log transformation
     sns.distplot(np.log(df["Kilometers_Driven"]), axlabel = "Log(Kilometers_Driven)")
     df["kilometers_driven_log"] = np.log(df["Kilometers_Driven"])
+    return df
 
 def plot_distribution_bivariate():
     sns.pairplot(df, hue = "Fuel_Type")
@@ -366,7 +374,7 @@ def correlation_between_numeric_variables():
     # We will have to work on imputing New Price missing values because this is 
     # a very important feature in predicting used car price accurately
 
-def missing_value_treatment():
+def missing_value_treatment(df):
     # Checking missing values again
     df.isnull().sum()
 
@@ -404,6 +412,7 @@ def missing_value_treatment():
     # -----------------
     # There are still some NAs in power and new_price_num.
     # There are a few car brands and models in our dataset that do not contain the new price information at all.
+    return df
 
 def knn_imputation_from_():
     # Now we'll have to estimate the new price using the other features. KNN 
