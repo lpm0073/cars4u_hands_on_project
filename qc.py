@@ -7,20 +7,21 @@
 # usage:        transcription of Cars4U hands-on session 2-Oct-2022
 #               for Regression Analysis.
 #------------------------------------------------------------------------------
-import sys
+
+# python imports
 import re
 import warnings                                                  # Used to ignore the warning given as output of the code
-warnings.filterwarnings('ignore')
 
+
+# from MIT IDSS Data Science & Machine Learning Jupyter Notebook
+import matplotlib.pyplot as plt                                  # Basic library for data visualization
 import numpy as np                                               # Basic libraries of python for numeric and dataframe computations
 import pandas as pd
-
-import matplotlib.pyplot as plt                                  # Basic library for data visualization
 import seaborn as sns                                            # Slightly advanced library for data visualization
-
 from sklearn.impute import KNNImputer
 
-# module-level declarations
+# module initializations
+warnings.filterwarnings('ignore')
 df = pd.read_csv("used_cars_data.csv")
 
 """
@@ -115,8 +116,6 @@ def process_column_mileage(df, with_visualizations=False):
         df.head(5)  # looks good!
 
     return df
-
-
 
 def process_column_engine(df, with_visualizations=False):
     # The data dictionary suggests that Engine indicates the displacement 
@@ -482,7 +481,3 @@ def knn_imputation_from_():
     df = df[df["Price"].notna()]
 
 
-# Python execution main program entry point
-def main():
-    args = sys.argv[1:]
-    # args is a list of the command line args
