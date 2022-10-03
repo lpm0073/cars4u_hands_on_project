@@ -67,7 +67,7 @@ def explore_the_data(df):
     # - New Price column also needs some processing. This one also contains 
     #   strings and a lot of missing values.
 
-def process_column_mileage(df):
+def process_column_mileage(df, with_visualizations=False):
     # - We have car mileage in two units, kmpl and km/kg.
     # - After quick research on the internet it is clear that these 2 units are used for cars of 2 different fuel types.
     # - kmpl - kilometers per litre - is used for petrol and diesel cars. -km/kg - kilometers per kg - is used for CNG and LPG-based engines.
@@ -111,12 +111,14 @@ def process_column_mileage(df):
     df["mileage_unit"] = mileage_unit
 
     # Checking the new dataframe
-    df.head(5)  # looks good!
+    if with_visualizations:
+        df.head(5)  # looks good!
+
     return df
 
 
 
-def process_column_engine(df):
+def process_column_engine(df, with_visualizations=False):
     # The data dictionary suggests that Engine indicates the displacement 
     # volume of the engine in CC. We will make sure that all the observations 
     # follow the same format - [numeric + " " + "CC"] and create a new 
@@ -154,10 +156,12 @@ def process_column_engine(df):
     df["engine_num"] = engine_num
 
     # Checking the new dataframe
-    df.head(5)
+    if with_visualizations:
+        df.head(5)
+
     return df
 
-def process_column_power(df):
+def process_column_power(df, with_visualizations=False):
     # The data dictionary suggests that Power indicates the maximum power of the 
     # engine in bhp. We will make sure that all the observations follow the 
     # same format - [numeric + " " + "bhp"] and create a new numeric column 
@@ -183,10 +187,12 @@ def process_column_power(df):
     df["power_num"] = power_num
 
     # Checking the new dataframe
-    df.head(10)  # Looks good now
+    if with_visualizations:
+        df.head(10)  # Looks good now
+
     return df
 
-def process_column_new_price(df):
+def process_column_new_price(df, with_visualizations=False):
     # We know that New_Price is the price of a new car of the same model in 
     # INR Lakhs (1 Lakh = 100, 000).
     #
@@ -213,21 +219,28 @@ def process_column_new_price(df):
     df["new_price_num"] = new_price_num
 
     # Checking the new dataframe
-    df.head(5)  # Looks ok
+    if with_visualizations: 
+        df.head(5)  # Looks ok
+
     return df
 
-def feature_engineering_name(df):
+def feature_engineering_name(df, with_visualizations=False):
     # Extract Brand Names
     df["Brand"] = df["Name"].apply(lambda x: x.split(" ")[0].lower())
     df["Brand"].value_counts()
-    plt.figure(figsize = (15, 7))
-    sns.countplot(y = "Brand", data = df, order = df["Brand"].value_counts().index)
+
+    if with_visualizations:
+        plt.figure(figsize = (15, 7))
+        sns.countplot(y = "Brand", data = df, order = df["Brand"].value_counts().index)
 
     # Extract Model Names
     df["Model"] = df["Name"].apply(lambda x: x.split(" ")[1].lower())
     df["Model"].value_counts()
-    plt.figure(figsize = (15, 7))
-    sns.countplot(y = "Model", data = df, order = df["Model"].value_counts().index[0:30])
+
+    if with_visualizations:
+        plt.figure(figsize = (15, 7))
+        sns.countplot
+        (y = "Model", data = df, order = df["Model"].value_counts().index[0:30])
     return df
 
 def feature_engineering_category():
@@ -319,33 +332,40 @@ def exception_electric_cars():
     # - Price is also missing for 1234 entries. Since price is the response variable that we want to predict, we will have to drop these rows when we build a model. These rows will not be able to help us in modeling or model evaluation. But while we are analyzing the distributions and doing missing value imputations, we will keep using information from these rows.
     # - New Price for 6247 entries is missing. We need to explore if we can impute these or if we should drop this column altogether.
 
-def drop_redundant_columns(df):
+def drop_redundant_columns(df, with_visualizations=False):
     df.drop(
         columns=["Mileage", "mileage_unit", "Engine", "Power", "New_Price"], inplace = True
     )
     return df
 
-def plot_distribution_price(df):
-    sns.distplot(df["Price"])
-    # observation: This is a highly skewed distribution. 
-    # Let us use log transformation on this column to see if that helps normalize the distribution.
+def plot_distribution_price(df, with_visualizations=False):
 
-    sns.distplot(np.log(df["Price"]), axlabel = "Log(Price)")
+    if with_visualizations:
+        sns.distplot(df["Price"])
+        # observation: This is a highly skewed distribution. 
+        # Let us use log transformation on this column to see if that helps normalize the distribution.
+
+        sns.distplot(np.log(df["Price"]), axlabel = "Log(Price)")
 
     # Creating a new column with the transformed variable.
     df["price_log"] = np.log(df["Price"])
 
     # price vs location
-    plt.figure(figsize = (15, 7))
-    sns.boxplot(x = "Location", y = "Price", data = df)
-    # observation: Price of used cars has a large IQR in Coimbatore and Bangalore
+    if with_visualizations:
+        plt.figure(figsize = (15, 7))
+        sns.boxplot(x = "Location", y = "Price", data = df)
+        # observation: Price of used cars has a large IQR in Coimbatore and Bangalore
+
     return df
 
-def plot_distribution_km_driven(df):
-    sns.distplot(df["Kilometers_Driven"])
+def plot_distribution_km_driven(df, with_visualizations=False):
 
-    # Log transformation
-    sns.distplot(np.log(df["Kilometers_Driven"]), axlabel = "Log(Kilometers_Driven)")
+    if with_visualizations:
+        sns.distplot(df["Kilometers_Driven"])
+
+        # Log transformation
+        sns.distplot(np.log(df["Kilometers_Driven"]), axlabel = "Log(Kilometers_Driven)")
+
     df["kilometers_driven_log"] = np.log(df["Kilometers_Driven"])
     return df
 
@@ -374,24 +394,27 @@ def correlation_between_numeric_variables():
     # We will have to work on imputing New Price missing values because this is 
     # a very important feature in predicting used car price accurately
 
-def missing_value_treatment(df):
-    # Checking missing values again
-    df.isnull().sum()
+def missing_value_treatment(df, with_visualizations=False):
 
-    # Look at a few rows where seats is missing
-    df[df["Seats"].isnull()]
+    if with_visualizations:
+        # Checking missing values again
+        df.isnull().sum()
 
-    # We'll impute these missing values one by one, by taking median number of 
-    # seats for the particular car, using the Brand and Model name.
-    df.groupby(["Brand", "Model"], as_index = False)["Seats"].median()
+        # Look at a few rows where seats is missing
+        df[df["Seats"].isnull()]
+
+        # We'll impute these missing values one by one, by taking median number of 
+        # seats for the particular car, using the Brand and Model name.
+        df.groupby(["Brand", "Model"], as_index = False)["Seats"].median()
 
     # Impute missing Seats
     df["Seats"] = df.groupby(["Brand", "Model"])["Seats"].transform(
         lambda x: x.fillna(x.median())
     )
 
-    # Check missing values in 'Seats'
-    df[df["Seats"].isnull()]
+    if with_visualizations:
+        # Check missing values in 'Seats'
+        df[df["Seats"].isnull()]
 
     # Maruti Estilo can accomodate 5
     df["Seats"] = df["Seats"].fillna(5.0)
@@ -407,7 +430,8 @@ def missing_value_treatment(df):
         lambda x: x.fillna(x.median())
     )
 
-    df.isnull().sum()
+    if with_visualizations:
+        df.isnull().sum()
     # observations:
     # -----------------
     # There are still some NAs in power and new_price_num.
