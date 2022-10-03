@@ -10,6 +10,7 @@
 
 # Python imports
 import math
+import warnings
 
 # from MIT IDSS Data Science & Machine Learning Jupyter Notebook
 import numpy as np                                               # Basic libraries of python for numeric and dataframe computations
@@ -18,6 +19,8 @@ from sklearn import metrics                                      # Metrics to ev
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 import statsmodels.api as sm
 
+# module initializations
+warnings.filterwarnings('ignore')
 
 def encode_cat_vars(x):
     x = pd.get_dummies(

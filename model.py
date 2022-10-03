@@ -12,7 +12,6 @@
 import sys
 import math
 import warnings                                                  # Used to ignore the warning given as output of the code
-warnings.filterwarnings('ignore')
 
 # from this repo
 from utils import (
@@ -55,6 +54,10 @@ from sklearn.model_selection import GridSearchCV                 # For tuning th
 import statsmodels.api as sm
 import statsmodels.stats.api as sms
 from statsmodels.compat import lzip
+
+# module initializations
+warnings.filterwarnings('ignore')
+
 
 # open and clean the data file
 df = pd.read_csv("used_cars_data.csv")
